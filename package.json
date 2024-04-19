@@ -1,0 +1,32 @@
+{
+  "name": "kaggleapp",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node index.js",
+    "dev": "tsc && cd build && node index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "csv-parser": "^3.0.0",
+    "dotenv": "^16.4.5",
+    "mysql2": "^3.9.6",
+    "node-fetch": "^3.3.2",
+    "playwright": "^1.43.1",
+    "sequelize": "^6.37.3",
+    "unzipper": "^0.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.12.7",
+    "@types/unzipper": "^0.10.9",
+    "sequelize-cli": "^6.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}
