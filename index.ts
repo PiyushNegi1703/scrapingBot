@@ -8,130 +8,102 @@ import { insertData, readData } from "./controller/user.controller.js";
 import User from "./models/user.model.js";
 import fetch from "node-fetch";
 import dotenv from "dotenv";
+import { delay } from "./utils.js";
+import signin from "./pageController/signin.controller.js";
+import download from "./pageController/download.controller.js";
 
 dotenv.config();
-const kaggleEmail = process.env.KAGGLE_EMAIL;
+const kaggleEmail = process.env.KAGGLE_EMAIL || "";
 const kagglePassword = process.env.KAGGLE_PASSWORD + "##";
 const hubspotApiKey = process.env.HUBSPOT_API_KEY;
 
 async function downloadCSV() {
   try {
+    // Launching chromium browser
     const browser = await chromium.launch({
-      headless: false,
+      headless: true,
       downloadsPath: "./csv",
     });
+
+    // Creating a browser context
     const context = await browser.newContext({
       acceptDownloads: true,
-      bypassCSP: true,
     });
-    const page = await context.newPage();
-    page.setDefaultTimeout(30000);
-    await page.setViewportSize({ width: 800, height: 600 });
-    await page.goto("https://kaggle.com", { waitUntil: "load" });
 
-    const signinClick = await page.$(
-      "div.sc-iqziPC.gJSBDX > div:nth-child(1) > a"
-    );
-    await signinClick?.click();
+    const page = await context.newPage(); // Creating a new page
+    page.setDefaultTimeout(30000); // Setting the default timeout to 30 seconds
 
-    await delay(2000);
-    const signinWithEmailClick = await page.$(
-      "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > div > div:nth-child(1) > button:nth-child(2)"
-    );
+    // Function to go to Kaggle and sign in
+    await signin(page, kaggleEmail, kagglePassword);
 
-    await signinWithEmailClick?.click();
+    await delay(2000); // Creating a delay of 2 seconds to wait for the page to load
 
-    await delay(2000);
-    await page.waitForSelector(
-      "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label"
-    );
-    const email = await page.$(
-      "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label:nth-child(2) > input"
-    );
-    const password = await page.$(
-      "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label:nth-child(3) > input"
-    );
-    const button = await page.$(
-      "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > div:nth-child(5) > button:nth-child(2)"
-    );
+    // Funciton to redirect to the csv file page and download the file
+    await download(page);
 
-    await email?.fill(kaggleEmail as string);
-    await password?.fill(kagglePassword as string);
-    await button?.click();
-
-    await delay(2000);
-    await page.goto(
-      "https://www.kaggle.com/datasets/thedevastator/us-baby-names-by-year-of-birth?select=babyNamesUSYOB-full.csv",
-      { waitUntil: "load" }
-    );
-
-    const downloadPromise = page.waitForEvent("download");
-    await page.waitForSelector(
-      "#site-content > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(5) > div:nth-child(4) > div > div > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(2)"
-    );
-    const downloadButton = await page.$(
-      "#site-content > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(5) > div:nth-child(4) > div > div > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(2)"
-    );
-    await downloadButton?.click();
-    const download = await downloadPromise;
-
-    await download.saveAs("./csv/" + download.suggestedFilename());
-
+    // Closing the browser after all the tasks are done
     await browser.close();
   } catch (error) {
+    // Checking if any error has occured during the process and logging it
     console.log("An error occured:", error);
   }
 }
 
+// This a type definition for the data that we are going to read from the csv file and insert into the database
 type Data = {
   name: string;
   sex: string;
 };
 
 async function readCsvFile(): Promise<Data[]> {
+  // Creating an array to store the data recieved from the csv file
   let results: Data[] = [];
 
+  // The file is getting stored in the csv folder so we are reading the files from the csv folder
   const files = await readdir("csv");
+
+  // The downloaded file is a zip file so we are filtering the zip file from the files array
   const zipFile = files.filter((file) => file.includes(".zip"))[0];
 
+  // Entering the zip file and reading the csv file
   return new Promise<Data[]>((resolve, reject) => {
     createReadStream(path.join("csv", zipFile))
-      .pipe(Parse())
-      .on("entry", (entry) => {
+      .pipe(Parse()) // Using unzipper to enter the zip file
+      .on("entry", (entry) => { // Reading the csv file
         entry
-          .pipe(csv())
+          .pipe(csv()) // Using csv-parser to read the csv file
           .on("data", (data: any) => {
-            const { Name, Sex } = data;
+            const { Name, Sex } = data; // Destructuring the data
 
-            results.push({ name: Name, sex: Sex });
+            results.push({ name: Name, sex: Sex }); // Pushing the data into the results array
           })
           .on("end", () => {
-            resolve(results);
+            resolve(results); // Resolving the promise with the results array
           })
           .on("error", (err: any) => {
-            reject(err);
+            reject(err); // Rejecting the promise if any error occurs
           });
       });
   });
 }
 
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-
+// Creating a type definition for the data that we are going to send to hubspot
 type UserInHubspot = {
   email: string;
   properties: [
+    // These properties are the predefined ones in hubspot so using them to send the data
     { property: "firstname"; value: string },
     { property: "gender"; value: string }
   ];
 };
 
 async function addUsersToHubspot(users: User[]) {
-  // add users to hubspot
+  // The endpoint to send the data to hubspot
   const endpoint = "https://api.hubapi.com/contacts/v1/contact/batch";
-  let results: UserInHubspot[] = [];
+  let results: UserInHubspot[] = []; // Creating an array to store the data that we are going to send to hubspot
 
-  for (let i = 0; i < 100; i++) {
-    // add user to hubspot
+  for (let i = 0; i < 100; i++) { 
+    // Destructuring the data from the users array
     const { id, name, sex } = users[i];
     results.push({
       email: `test${id}@gmail.com`,
@@ -142,7 +114,7 @@ async function addUsersToHubspot(users: User[]) {
     });
   }
 
-  // send the data to hubspot
+  // The options to send the data to hubspot
   const options = {
     method: "POST",
     url: endpoint,
@@ -153,6 +125,7 @@ async function addUsersToHubspot(users: User[]) {
     body: JSON.stringify(results),
   };
 
+  // Sending the data to hubspot
   fetch(`${options.url}`, {
     method: options.method,
     headers: options.headers,
@@ -166,6 +139,7 @@ async function addUsersToHubspot(users: User[]) {
     });
 }
 
+// The main function to call all the functions
 (async () => {
   try {
     await downloadCSV();
