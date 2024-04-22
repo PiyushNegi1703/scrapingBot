@@ -12,7 +12,7 @@ const connectionDetails = {
 };
 
 // Creating a new instance of sequelize
-export const sequelize = new Sequelize({
+const sequelize = new Sequelize({
   dialect: "mysql",
   ...connectionDetails,
 });

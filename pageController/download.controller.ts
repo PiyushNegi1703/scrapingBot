@@ -1,4 +1,5 @@
 import { Page } from "playwright";
+import { delay } from "../utils.js";
 
 async function download(page: Page) {
   // Redirecting to the csv file page
@@ -10,15 +11,11 @@ async function download(page: Page) {
   // Waiting for the download event to occur
   const downloadPromise = page.waitForEvent("download");
 
-  // Waiting for the download button to appear
-  await page.waitForSelector(
-    "#site-content > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(5) > div:nth-child(4) > div > div > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(2)"
-  );
+  // Waiting for the page to load
+  await delay(2000);
 
   // Clicking the download button
-  const downloadButton = await page.$(
-    "#site-content > div:nth-child(2) > div > div:nth-child(2) > div > div:nth-child(5) > div:nth-child(4) > div > div > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(2)"
-  );
+  const downloadButton = await page.$("div.sc-dmXMPJ");
   await downloadButton?.click();
 
   // Waiting for the download to complete

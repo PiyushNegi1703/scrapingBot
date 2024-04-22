@@ -6,36 +6,25 @@ async function signin(page: Page, kaggleEmail: string, kagglePassword: string) {
   await page.goto("https://kaggle.com", { waitUntil: "load" });
 
   // Clicking the sign in button
-  const signinClick = await page.$(
-    "div.sc-iqziPC.gJSBDX > div:nth-child(1) > a"
-  );
+  await page.waitForSelector("div.sc-eXzmLu");
+  const signinClick = await page.$("div.sc-eXzmLu");
 
   // Clicking the sign in with email button
   await signinClick?.click();
 
   // Waiting for the sign in with email button to appear
   await delay(2000);
-  const signinWithEmailClick = await page.$(
-    "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > div > div:nth-child(1) > button:nth-child(2)"
-  );
+  await page.waitForSelector('button[role="button"]');
+  const signinWithEmailClick = await page.$$('button[role="button"]');
 
   // Clicking the sign in with email button
-  await signinWithEmailClick?.click();
+  await signinWithEmailClick[1].click();
 
   // Waiting for the email and password fields to appear
   await delay(2000);
-  await page.waitForSelector(
-    "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label"
-  );
-  const email = await page.$(
-    "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label:nth-child(2) > input"
-  );
-  const password = await page.$(
-    "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > label:nth-child(3) > input"
-  );
-  const button = await page.$(
-    "#site-content > div:nth-child(2) > div > div > div:nth-child(1) > form > div > div:nth-child(5) > button:nth-child(2)"
-  );
+  const email = await page.$('input[name="email"]');
+  const password = await page.$('input[name="password"]');
+  const button = await page.$('button[type="submit"]');
 
   // Filling the email and password fields
   await email?.fill(kaggleEmail);
