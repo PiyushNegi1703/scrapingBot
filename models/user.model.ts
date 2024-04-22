@@ -12,7 +12,7 @@ interface UserInterface {
 type UserAttributes = Optional<UserInterface, 'id'>;
 
 // User model
-class User extends Model<UserInterface, UserAttributes> implements User {
+class User extends Model<UserInterface, UserAttributes> implements UserInterface {
     public declare id: number;
     public declare name: string;
     public declare sex: string;
